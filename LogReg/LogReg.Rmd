@@ -1,0 +1,246 @@
+---
+title: "LogReg Assignment"
+author: "Samuel Ivanecky"
+date: "February 8, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggplot2)
+library(faraway)
+library(tidyverse)
+library(gridExtra)
+```
+
+## Problem 1
+Modeling the probability of winning as a linear combination of predictor variables directly poses a problem because a linear model has potential to produce results with no numerical bounds. This means the model can produce values that are greater than one or less than zero which do not make logical sense in the terms of the problem. A team cannot have over a 100% chance to win a game and similarly they cannot have a negative chance of winning. Therefore, a proper model would constrain the predicted output values on a scale of 0 to 1. 
+
+This problem can be handled by using a logistic regression model which equates the linear combination of predictor variables to the term $log\left(\frac{p}{1-p}\right)$, which will only produce results from 0 to 1.
+
+## Problem 2
+```{r Data setup}
+# Load data
+df <- read.csv("LogRegData.csv")
+
+df$GPAcategorized <- factor(ifelse(df$GPA < 3, "Low",
+                                   ifelse(df$GPA < 3.5, "Medium",
+                                          "High")))
+# Convert rank to factor
+df$Rank <- as.factor(df$Rank)
+
+# Factor variable for admission
+df$admitted <- as.factor(df$admission)
+
+# Attach data
+attach(df)
+
+```
+
+```{r Histograms}
+# Histograms of GRE, GPA
+# GRE
+ggplot(df, aes(GRE)) +
+  geom_histogram(bins = 15, color = "blue", fill= "lightblue") +
+  ggtitle("Distribution of GRE") +
+  labs(x="GRE", y="Frequency") +
+  theme(plot.title = element_text(hjust = 0.5)) -> p1
+
+# GPA
+ggplot(df, aes(GPA)) +
+  geom_histogram(bins = 15, color = "darkgreen", fill= "lightgreen") +
+  ggtitle("Distribution of GPA") +
+  labs(x="GPA", y="Frequency") +
+  theme(plot.title = element_text(hjust = 0.5)) -> p2
+
+# Make a grid
+grid.arrange( p1, p2, nrow = 2 )
+
+ggplot(df, aes(GPA)) +
+  geom_freqpoly(aes(color = admitted, linetype = admitted), size = 1.5) +
+  theme_minimal() +
+  ggtitle("Distribution of GPA by Admitted") +
+  labs(x="GPA", y="Frequency") +
+  theme(plot.title = element_text(hjust = 0.5)) -> p3
+
+ggplot(df, aes(GRE)) +
+  geom_freqpoly(aes(color = admitted, linetype = admitted), size = 1.5) +
+  theme_minimal() +
+  ggtitle("Distribution of GRE by Admitted") +
+  labs(x="GRE Score", y="Frequency") +
+  theme(plot.title = element_text(hjust = 0.5)) -> p4
+
+# Grid of freqpoly plots
+grid.arrange( p3, p4, nrow = 2 )
+
+ggplot(df, aes(GRE, fill = admitted)) +
+  geom_histogram(bins = 15, alpha = 0.4) +
+  ggtitle("Distribution of GRE by Admission Status") +
+  labs(x="GRE", y="Frequency") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(name="Admission",values=c("red","green"),labels=c("Yes","No")) -> p5
+
+ggplot(df, aes(GPA, fill = admitted)) +
+  geom_histogram(bins = 15, alpha = 0.4) +
+  ggtitle("Distribution of GPA by Admission Status") +
+  labs(x="GPA", y="Frequency") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(name="Admission",values=c("red","green"),labels=c("Yes","No")) -> p6
+
+# Grid of layered histograms
+grid.arrange( p5, p6, nrow = 2)
+
+```
+The distributions of GPA and GRE among all students are slightly skewed-left with more students acheiving scores towards the maximum than minimum of either statistic. From the second plots we see the distribution of GPA for those admitted has a larger proportion of data from ~3.5-4.0 whereas the distribution of non-admitted students has the largest proportion between 3.0-3.5. From this it initially appears that the 3.5 GPA mark may be an indicator of admission. This can also be seen in the stacked histograms.
+
+This trend does not appear with GRE. The distribution of GRE between admitted and non-admitted students is roughly identical with one small difference. The proportion of students scoring less than ~450 is much higher in non-admitted students whereas essentially no admitted students scored below this makr.
+```{r Scatterplots}
+# Relation of GPA to GRE
+ggplot(df, aes(GPA, GRE, color = Rank)) +
+  geom_point() +
+  ggtitle("GPA vs GRE") +
+  labs(x="GPA", y="GRE") +
+  theme(plot.title = element_text(hjust = 0.5)) -> p1
+
+# Relation of GPA to GRE
+ggplot(df, aes(GPA, GRE, color = admitted)) +
+  geom_point() +
+  ggtitle("GPA vs GRE") +
+  labs(x="GPA", y="GRE") +
+  theme(plot.title = element_text(hjust = 0.5)) -> p2
+
+grid.arrange(p1, p2, nrow = 2)
+
+```
+No clear relationships can be drawn between probability of admission and any variables from the scatterplots. It appears there is a higher proportion of students who score well on both the GRE and GPA that are admitted but within this group there are still individuals who are also rejected.
+
+```{r Boxplots}
+# GRE
+ggplot(df, aes(admitted, GRE, fill = admitted)) +
+  geom_boxplot() +
+  ggtitle("GRE of Admitted vs\n Non-admitted Students") +
+  labs(x="Admitted", y="GRE Score") -> p1
+
+# GPA
+ggplot(df, aes(admitted, GPA, fill = admitted)) +
+  geom_boxplot() +
+  ggtitle("GPA of Admitted vs\n Non-admitted Students") +
+  labs(x="Admitted", y="GPA Score") -> p2
+
+# Break into grid
+grid.arrange(p1, p2, ncol = 2)
+
+# GRE broken down by rank
+ggplot(df, aes(admitted, GRE, fill = admitted)) +
+  geom_boxplot() +
+  ggtitle("GRE of Admitted vs Non-admitted Students Grouped by Rank") +
+  labs(x="Admitted", y="GRE Score") +
+  facet_wrap(~ df$Rank)
+
+# GPA broken down by rank
+ggplot(df, aes(admitted, GPA, fill = admitted)) +
+  geom_boxplot() +
+  ggtitle("GPA of Admitted vs Non-admitted Students Grouped by Rank") +
+  labs(x="Admitted", y="GPA Score") +
+  facet_wrap(~ df$Rank)
+```
+The boxplots provide little information with regard to rank vs admittance. While the median scores of GRE and GPA tend to be higher in students who are admitted, there is no clear association between rank and admission. One trend highlighted by the boxplots is it appears that GPA has more effect on likelihood of admission than GRE score. The difference in median of admitted vs non-admitted students is much smaller in GRE than in GPA, indicating GPA may be a better predictor of admission. Note that the median GPA is roughly 3.5 which was the mark previously identified. Only slightly more than 25% of non-admitted students scored above this mark, compared to approzximately 50% of admitted students.
+
+```{r Pie Charts}
+# Admitted students 
+ggplot(df[which(df$admission == 1),], aes(x=admitted, fill = GPAcategorized)) +
+  geom_bar(position = "fill") +
+  coord_polar("y") +
+  ggtitle("Proportions of Admitted Students\n by Categorized GPA") +
+  labs(fill = "Categorized GPA", x = "", y="") +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank()) -> p1
+
+# Denied students
+ggplot(df[which(df$admission == 0),], aes(x=admitted, fill = GPAcategorized)) +
+  geom_bar(position = "fill") +
+  coord_polar("y") +
+  ggtitle("Proportions of Denied Students\n by Categorized GPA") +
+  labs(fill = "Categorized GPA", x = "", y="") +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid  = element_blank()) -> p2
+
+# Arrange into grid with two columns
+grid.arrange(p1, p2, ncol = 2)
+
+```
+The three categories of GPA are classified as:
+Low: < 3.0
+Medium 3.0-3.5
+High: > 3.5
+
+The cutoff for the High group matches the cutoff trend from earlier analysis and from the pie charts it is apparaent that this cutoff of 3.5 is significant for admission. Of those admitted, over half had a GPA above 3.5 and almost no individuals were admitted if their GPA was less than 3.0. Compared to the non-admitted students, roughly a third of the students had a GPA in the High range whereas almost half of the group fell between 3.0 and 3.5. 
+
+Based on the plots above, the categorized GPA appears to be the most important predictor variable for determining admission. The GRE score also appears to have some weight as admitted students tended to score higher than non-admitted students. Rank appeared to have minimal or no association with admission.
+
+## Problem 3
+### Problem 3.1
+```{r Create logistic regression model}
+# Create initial model
+logisticModel1 <- glm(admission ~ GRE + GPAcategorized, 
+                      family=binomial(link='logit'), data=df)
+
+# Summary of model
+summary(logisticModel1)
+```
+Based on the model summary, three of the four variables in the model are significant to the admission status based on p-value statistics. The coefficient of GRE being positive indicates that increasing the GRE score of an applicant increases the log odds that the individual is admitted. The value of 0.003185 indicates that for each point increase on the GRE, the likelihood of admission increases by ~1%. Conversely, for GPAcategorizedLow and GPAcategorizedMedium, both variables have negative coefficients which indicated that if an applicant is a member of either group they will have decreased log odds of being admitted. Interstingly, the coefficient for the Medium level is larger than that for the Low level which implies that being in the Medium group decreases odds more than being in the Low group. 
+
+Two parameters were estimated for GPAcategorized - Low and Medium. The High level was taken as reference. The estimated parameters for Low and Medium are both negative, indicating that being a member of either group decreases the log odds of an applicant being admitted. As stated above, being a member of the Medium group surprisingly has a larger negative impact on addmission probability than being in the Low group. Based on the coefficient for Low, the lowest group has ~64% of the odds of getting admitted as members of the High group. Those in the Mediu group have only ~53% of the chance of those in the High group.
+
+The GRE coefficient is positive which indicates that increasing the GRE score increases the log odds that an applicant is admitted. Logically this follows as typically students who perform better on the GRE will have a stronger chance of being admitted to graduate programs.
+
+### Problem 3.2
+```{r Create second logistic model}
+# Change reference level of GPAcategorized
+df$GPAcategorized = relevel(df$GPAcategorized, ref = "Low")
+
+# Generate new model
+logisticModel2 <- glm(admission ~ GRE + GPAcategorized, 
+                      family=binomial(link='logit'), data=df)
+
+# Print model summary
+summary(logisticModel2)
+```
+The estimates related to GPAcategorized changed while the estimate related to GRE did not. The GRE coefficient did not change because the GRE score has no relation to the reference level of the GPA. The GPAcategorizedMedium coefficient changed to indicate that those in the Medium group have ~83% odds of getting accepted as those in the Low group.
+
+## Problem 3.3
+```{r Create new data}
+# Create new data
+newdata <- as.data.frame( cbind( 0, 650, 4.00, 1, "High", 0 ) )
+
+# Rename columns for merging
+names(newdata) <- c("admission", "GRE", "GPA", "Rank", "GPAcategorized", "admitted")
+
+# Add to originl data
+df <- rbind(df, newdata)
+
+# Reformat GRE
+df$GRE <- as.numeric(df$GRE)
+```
+
+```{r Calculate probability using model 1}
+# Calculate probability vector
+prob1 <- predict( logisticModel1, df, type = "response" )
+
+# Print probability as a percent
+print( (1 - prob1[351]) * 100 )
+```
+
+The probability of an individual getting rejected based on a High categorized GPA and a 650 score on the GRE is 58.39%. This is calculated by adding an individial to the dataframe with the given credentials, then running the $predict$ function over the dataframe. This function call generates predictions for the entire dataset and the individual of interest is the 351st observation. We then look up the 351st entry in our probability vector which returns 0.4161, the probability that the individual is accepted. By subtracting this from 1, the value of 0.5839 is calculated which represents the probability that the individual is rejected.
+
+```{r Calculate the probability using model 2}
+# Calculate probability vector
+prob2 <- predict( logisticModel2, df, type = "response" )
+
+# Print probability as a percent
+print( (1 - prob2[351]) * 100 )
+```
+
+The same steps are performed to calculate the probability of rejection using the second model. This model also yields a result of 58.39% likelihood that the individual is rejected.

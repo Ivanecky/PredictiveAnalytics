@@ -1,0 +1,177 @@
+---
+title: "Linear Regression Assignment"
+author: "Samuel Ivanecky"
+date: "February 1, 2019"
+output: pdf_document
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(captioner)
+```
+
+```{r Load Data}
+df <- read.csv("LinRegData.csv")
+```
+
+## Part 1
+### Part 1.1
+```{r 1.1, fig.align='center'}
+# Create scatterplot of Y vs numvar1
+ggplot(df, aes(numvar1, Y)) +
+  geom_point() +
+  ggtitle("Y vs numvar1") +
+  labs(x="numvar1", y="Y")
+```
+
+Based on the scatterplot, the variables $numvar1$ and $Y$ appear to be associated; as $numvar1$ increases, $Y$ also increases. The association between the two variables appears to be somewhat linear but there is noticeable curvature of the data which would not be well represented using a linear model. Using a $Y=\beta_{0}+\beta_{1}*numvar1+\epsilon$ model could give a decent representation of the data but due to the curvature in shown in the plot, a polynomial model would be a more adequate choice to account for this curving.
+
+### Part 1.2
+```{r 1.2}
+# Create linear model
+model1 <- lm(Y~numvar1, data = df)
+
+# Print model summary
+summary(model1)
+```
+
+Two parameters are estimated for the model. The first parameter is $\beta_{0}=5.259$ and the second is $\beta_{1}=3.0359$. The parameter $\beta_{0}$ represents the y-intercept for the linear model which indicates that the predicted value of $Y$ is $5.259$ if the value of $numvar1=0$. The second parameter, $\beta_{1}$ is the slope coefficient for the linear model. The value of $3.0359$ indicates that increasing $numvar1$ by $1$ will result in a $3.0359$ increase in $Y$. The $R^2$ value of $0.8975$ indicates the linear model accounts for approximately 90% of the variability in the response variable. In short, a high value of $R^2$ (close to 1) indicates the model is an appropriate fit for the dataset.
+
+## Part 2
+### Part 2.1
+```{r 2.1}
+# New variable
+df$numvar1new <- (df$numvar1)^(1/2.25)
+
+# Create new linear model
+model2 <- lm(Y ~ numvar1new, data = df)
+
+# Print summary
+summary(model2)
+
+```
+
+The second linear model, model2, also has two estimated parameters. For model2 the estimated parameters are $\beta_{0}=1.9792$ and $\beta_{1}=6.4106$. The value of $\beta_{0}$ indicates that if the value of $numvar1new=0$, the predicted value of $Y$ is $1.9792$. The value of $\beta_{1}$ indicates that for a singular increase in $numvar1new$, the predicted value of $Y$ would increase by $6.4106$.
+
+The $R^2$ value for model2 is $0.9263$, indicating roughly 93% of the variability in the response variable is accounted for. Given that the $R^2$ for the model2 is greater than that for model1, model2 appears to be a better fit for the dataset.
+
+## Part 3
+```{r Scatterplots, fig.align='center'}
+# Scatter plot for catvar1
+ggplot(df, aes(numvar1new, Y, color = catvar1)) +
+  geom_point() +
+  ggtitle("numvar1new vs Y Grouped by catvar1") +
+  labs(x="numvar1new", y="Y")
+
+# Scatter plot for catvar2
+ggplot(df, aes(numvar1new, Y, color = catvar2)) +
+  geom_point() +
+  ggtitle("numvar1new vs Y Grouped by catvar2") +
+  labs(x="numvar1new", y="Y")
+
+# Scatter plot for catvar3
+ggplot(df, aes(numvar1new, Y, color = catvar3)) +
+  geom_point() +
+  ggtitle("numvar1new vs Y Grouped by catvar3") +
+  labs(x="numvar1new", y="Y")
+```
+
+Based on the three scatterplots, including both $catvar2$ and $catvar3$ could be beneficial in producing a better linear model. The plot of $catvar1$ appears to have a random distribution among the different categories, showing no clear trends defined. For both $catvar2$ and $catvar3$, there appears to separation of the values based on which category they belong to, indicated by the layers of color in each respective plot. These categorical variables appear to have an association with the response variable $Y$ and thus should be included in the model.
+
+## Part 4
+```{r Create models}
+# Transform numvar2
+df$numvar2new <- (df$numvar2)^(1/3.75)
+
+# Create three new models
+model3=lm(Y~numvar1new+catvar1+catvar2+catvar3, data=df)
+model4=lm(Y~numvar1new*catvar1+numvar1new*catvar2+numvar1new*catvar3, data=df)
+model5=lm(Y~numvar2new+numvar1new*catvar1+numvar1new*catvar2+numvar1new*catvar3, data=df)
+```
+
+```{r model1, fig.align='center'}
+# Summary
+summary(model1)
+# Create 4-1 plot for residuals
+par(mfrow=c(2,2), oma=c(0,0,0,0))
+plot(model1)
+```
+
+```{r model2, fig.align='center'}
+# Summary
+summary(model2)
+# Create 4-1 plot for residuals
+par(mfrow=c(2,2), oma=c(0,0,0,0))
+plot(model2)
+```
+
+```{r model3, fig.align='center'}
+# Summary
+summary(model3)
+# Create 4-1 plot for residuals
+par(mfrow=c(2,2), oma=c(0,0,0,0))
+plot(model3)
+```
+
+```{r model4, fig.align='center'}
+# Summary
+summary(model4)
+# Create 4-1 plot for residuals
+par(mfrow=c(2,2), oma=c(0,0,0,0))
+plot(model4)
+```
+
+```{r model5, fig.align='center'}
+# Summary
+summary(model5)
+# Create 4-1 plot for residuals
+par(mfrow=c(2,2), oma=c(0,0,0,0))
+plot(model5)
+```
+
+```{r Tables}
+# R-squared
+rsq <- as.data.frame(cbind(0.8975, 0.9263, 0.9764, 0.9803, 0.9804))
+names(rsq) <- c("Model1", "Model2", "Model3", "Model4", "Model5")
+kable(rsq, caption = "R-Squared values for all models")
+
+```
+
+Comparing the five different models generated, model3 appears to be the most adequate fit for the data. Both model1 and model2 have substantially lower $R^2$ values than the other three models, indicating neither are the best fit. The final three, model1, model2 and model3, all have an $R^2$ value within 0.004 of one another making this statistic essentially the same between them. By analyzing the residual diagnostic plots of the last three models, model4 is the most appropriate for the given data. All three models show simliar plots comparing the residuals to fitted values but the Residuals vs Leverage plot for model5 shows eratic behavior in the Cook's Distance value, indicating this model is more effected by influential observations.
+
+## Part 5
+```{r Simulations}
+B=1000 ## number of simulation
+b_1 =rep(NA, B)
+for(i in 1:B)
+{
+  set.seed(i)
+  X=rnorm(100,20,10)
+  Y=rnorm(100,70,5) 
+  model <- lm(Y ~ X)
+  b_1[i] = model$coefficients[2]
+}
+```
+
+```{r Density plots, fig.align='center'}
+avg_b_1 <- mean(b_1)
+ 
+# Plot density plots of coefficients
+# b_1
+ggplot(as.data.frame(b_1), aes(b_1)) +
+  geom_density(fill = "blue", alpha = 0.25) +
+  ggtitle("Distribution of b_1") +
+  labs(x="b_1", y="Density") +
+  geom_vline(xintercept = avg_b_1)
+
+avg_b_1
+
+```
+Based on the density plot, the slope coefficients ($b_{1}$) for the 1000 simulated linear models appear to be roughly normally distributed with a mean of approximately zero. The mean of $b_{1}$ is 0.0007338344, which is approximately zero. Based on the mean value and the distribution, the slope coefficient of zero indicates that for randomly simulated values of X and Y there is no relationship, or a correlation coefficient of zero.
+
+\newpage
+##Code Appendix:
+```{r , ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
